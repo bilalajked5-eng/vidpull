@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VidPull — Download Videos From Any Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#080b14; --surface:#0e1220; --surface2:#141827;
+  --border:rgba(255,255,255,.07); --border2:rgba(255,255,255,.12);
+  --accent:#4f8bff; --accent2:#a855f7; --accent3:#22d3ee;
+  --text:#f0f4ff; --muted:#6b7aa1; --muted2:#8b9bc0;
+  --success:#10b981; --error:#f43f5e;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;line-height:1.6;overflow-x:hidden;min-height:100vh}
+
+/* Background blobs */
+.bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.blob{position:absolute;border-radius:50%;filter:blur(80px);opacity:.17;animation:floatBlob 18s ease-in-out infinite}
+.blob-1{width:600px;height:600px;background:radial-gradient(circle,#4f8bff,transparent 70%);top:-150px;left:-100px;animation-delay:0s}
+.blob-2{width:500px;height:500px;background:radial-gradient(circle,#a855f7,transparent 70%);top:40%;right:-150px;animation-delay:-6s}
+.blob-3{width:400px;height:400px;background:radial-gradient(circle,#22d3ee,transparent 70%);bottom:-100px;left:30%;animation-delay:-12s}
+@keyframes floatBlob{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(40px,-30px) scale(1.05)}66%{transform:translate(-20px,40px) scale(.95)}}
+.bg-canvas::after{content:'';position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");opacity:.025}
+
+/* Layout */
+.wrapper{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:0 24px}
+
+/* Nav */
+nav{padding:18px 0;border-bottom:1px solid var(--border);backdrop-filter:blur(20px);background:rgba(8,11,20,.8);position:sticky;top:0;z-index:100}
+.nav-inner{display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.02em}
+.logo span{-webkit-text-fill-color:var(--accent3)}
+.nav-links{display:flex;gap:4px}
+.nav-link{padding:6px 14px;border-radius:20px;font-size:.82rem;font-weight:500;color:var(--muted2);cursor:pointer;transition:all .2s;border:1px solid transparent;text-decoration:none}
+.nav-link:hover{color:var(--text);border-color:var(--border2);background:var(--surface2)}
+
+/* Hero */
+.hero{padding:90px 0 60px;text-align:center}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(79,139,255,.1);border:1px solid rgba(79,139,255,.25);color:var(--accent);font-size:.78rem;font-weight:600;padding:6px 14px;border-radius:20px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:28px;animation:fadeUp .6s ease both}
+.hero-badge::before{content:'●';font-size:.6rem;animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+h1{font-family:'Syne',sans-serif;font-size:clamp(2.2rem,6vw,4rem);font-weight:800;line-height:1.1;letter-spacing:-.03em;margin-bottom:18px;animation:fadeUp .6s .1s ease both}
+h1 .grad{background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 50%,var(--accent3) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-sub{color:var(--muted2);font-size:1.05rem;max-width:520px;margin:0 auto 44px;font-weight:300;animation:fadeUp .6s .2s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* Platform tabs */
+.platform-tabs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:28px;animation:fadeUp .6s .3s ease both}
+.ptab{display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:12px;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--muted2);font-size:.83rem;font-weight:500;transition:all .2s}
+.ptab:hover{border-color:var(--border2);color:var(--text);background:var(--surface2)}
+.ptab.active{border-color:currentColor;background:rgba(255,255,255,.05)}
+.ptab.ig.active{color:#e1306c}.ptab.yt.active{color:#ff0000}.ptab.tk.active{color:#69c9d0}
+.ptab.tw.active{color:#1d9bf0}.ptab.fb.active{color:#1877f2}.ptab.pi.active{color:#e60023}
+.ptab.vm.active{color:#1ab7ea}.ptab.all.active{color:var(--accent)}
+
+/* Input card */
+.input-card{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:28px;box-shadow:0 0 80px rgba(79,139,255,.08);animation:fadeUp .6s .4s ease both;position:relative;overflow:hidden}
+.input-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),var(--accent2),transparent);opacity:.5}
+.input-row{display:flex;gap:12px;align-items:stretch}
+.url-input{flex:1;padding:14px 20px;background:var(--bg);border:1px solid var(--border2);border-radius:12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.95rem;outline:none;transition:all .2s;min-width:0}
+.url-input::placeholder{color:var(--muted)}
+.url-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,139,255,.12)}
+.url-input.detected{border-color:var(--success)}
+.btn-dl{padding:14px 28px;border-radius:12px;border:none;cursor:pointer;background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;transition:all .2s;white-space:nowrap}
+.btn-dl:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(79,139,255,.35)}
+.btn-dl:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-paste{padding:14px 18px;border-radius:12px;border:1px solid var(--border2);background:var(--surface2);color:var(--muted2);font-family:'DM Sans',sans-serif;font-size:.9rem;cursor:pointer;transition:all .2s;white-space:nowrap}
+.btn-paste:hover{color:var(--text);background:rgba(255,255,255,.08)}
+
+/* Detected badge */
+.detected-badge{display:none;align-items:center;gap:8px;margin-top:14px;padding:10px 16px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:10px;color:var(--success);font-size:.85rem}
+.detected-badge.show{display:flex}
+
+/* Error */
+.error-msg{display:none;margin-top:14px;padding:12px 16px;background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.25);border-radius:10px;color:var(--error);font-size:.85rem}
+.error-msg.show{display:block}
+
+/* Loading */
+.loading-wrap{display:none;margin-top:20px;text-align:center;padding:24px}
+.loading-wrap.show{display:block}
+.spinner{width:36px;height:36px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--accent);animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:var(--muted2);font-size:.9rem}
+
+/* Result */
+.result-area{display:none;margin-top:20px}
+.result-area.show{display:block;animation:fadeUp .4s ease both}
+.result-card{background:var(--surface2);border:1px solid var(--border2);border-radius:16px;overflow:hidden}
+.result-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px}
+.thumb-wrap{width:80px;height:52px;border-radius:8px;overflow:hidden;flex-shrink:0;background:var(--bg);display:flex;align-items:center;justify-content:center}
+.thumb-wrap img{width:100%;height:100%;object-fit:cover}
+.thumb-wrap .thumb-icon{font-size:1.6rem}
+.result-info{flex:1;min-width:0}
+.result-title{font-weight:600;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.result-meta{color:var(--muted);font-size:.78rem;margin-top:3px}
+.quality-list{padding:12px;display:flex;flex-direction:column;gap:8px}
+.q-item{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg);border-radius:10px;border:1px solid var(--border);transition:border-color .2s}
+.q-item:hover{border-color:var(--border2)}
+.q-left{display:flex;align-items:center;gap:12px}
+.q-badge{padding:3px 10px;border-radius:6px;font-size:.74rem;font-weight:700;font-family:'Syne',sans-serif}
+.q-4k{background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.3)}
+.q-1080{background:rgba(79,139,255,.15);color:#4f8bff;border:1px solid rgba(79,139,255,.3)}
+.q-720{background:rgba(34,211,238,.15);color:#22d3ee;border:1px solid rgba(34,211,238,.3)}
+.q-std{background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3)}
+.q-mp3{background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.2)}
+.q-label{color:var(--muted2);font-size:.83rem}
+.q-size{color:var(--muted);font-size:.78rem}
+.btn-dl-item{padding:8px 18px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;font-family:'Syne',sans-serif;font-weight:600;font-size:.8rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px;text-decoration:none;white-space:nowrap}
+.btn-dl-item:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(79,139,255,.3)}
+.btn-dl-item.loading-btn{opacity:.6;pointer-events:none}
+
+/* Platforms grid */
+.section-label{font-size:.74rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:24px}
+.platforms-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:70px;animation:fadeUp .6s .5s ease both}
+.plat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 14px;text-align:center;cursor:pointer;transition:all .25s;position:relative;overflow:hidden}
+.plat-card:hover{transform:translateY(-2px)}
+.plat-card .picon{font-size:1.8rem;margin-bottom:8px;display:block}
+.plat-card .pname{font-size:.78rem;font-weight:500;color:var(--muted2)}
+.plat-card.ig:hover{border-color:rgba(225,48,108,.4);box-shadow:0 8px 24px rgba(225,48,108,.1)}
+.plat-card.yt:hover{border-color:rgba(255,0,0,.4);box-shadow:0 8px 24px rgba(255,0,0,.1)}
+.plat-card.tk:hover{border-color:rgba(105,201,208,.4);box-shadow:0 8px 24px rgba(105,201,208,.1)}
+.plat-card.tw:hover{border-color:rgba(29,155,240,.4);box-shadow:0 8px 24px rgba(29,155,240,.1)}
+.plat-card.fb:hover{border-color:rgba(24,119,242,.4);box-shadow:0 8px 24px rgba(24,119,242,.1)}
+.plat-card.pi:hover{border-color:rgba(230,0,35,.4);box-shadow:0 8px 24px rgba(230,0,35,.1)}
+.plat-card.vm:hover{border-color:rgba(26,183,234,.4);box-shadow:0 8px 24px rgba(26,183,234,.1)}
+.plat-card.dm:hover{border-color:rgba(0,119,191,.4);box-shadow:0 8px 24px rgba(0,119,191,.1)}
+.plat-card.rd:hover{border-color:rgba(255,69,0,.4);box-shadow:0 8px 24px rgba(255,69,0,.1)}
+
+/* Stats */
+.stat-bar{display:flex;gap:0;justify-content:center;border:1px solid var(--border);border-radius:16px;overflow:hidden;margin:0 auto 56px;max-width:640px;animation:fadeUp .6s .45s ease both}
+.stat-item{flex:1;padding:18px;text-align:center;border-right:1px solid var(--border)}
+.stat-item:last-child{border-right:none}
+.stat-num{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat-lbl{font-size:.74rem;color:var(--muted);margin-top:2px}
+
+/* Steps */
+.steps-section{padding:50px 0}
+.section-title{font-family:'Syne',sans-serif;font-size:clamp(1.5rem,4vw,2.1rem);font-weight:700;text-align:center;margin-bottom:6px;letter-spacing:-.02em}
+.section-title .grad2{background:linear-gradient(135deg,var(--accent2),var(--accent3));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-top:36px}
+.step-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;transition:all .25s}
+.step-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+.step-num{font-family:'Syne',sans-serif;font-size:2.8rem;font-weight:800;line-height:1;margin-bottom:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;opacity:.6}
+.step-card h3{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:8px}
+.step-card p{color:var(--muted2);font-size:.86rem;line-height:1.6}
+
+/* Features */
+.features-section{padding:50px 0}
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:36px}
+.feat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;transition:all .25s}
+.feat-card:hover{border-color:var(--border2);background:var(--surface2)}
+.feat-icon{font-size:1.5rem;margin-bottom:10px}
+.feat-card h4{font-family:'Syne',sans-serif;font-size:.92rem;font-weight:700;margin-bottom:5px}
+.feat-card p{color:var(--muted2);font-size:.81rem;line-height:1.5}
+
+/* FAQ */
+.faq-section{padding:50px 0 70px}
+.faq-list{max-width:660px;margin:36px auto 0;display:flex;flex-direction:column;gap:8px}
+.faq-item{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .2s}
+.faq-item.open{border-color:var(--border2)}
+.faq-q{padding:16px 20px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-weight:500;font-size:.92rem;user-select:none}
+.faq-arrow{color:var(--muted);transition:transform .25s;font-size:1rem}
+.faq-item.open .faq-arrow{transform:rotate(180deg);color:var(--accent)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .35s ease}
+.faq-item.open .faq-a{max-height:300px}
+.faq-a-inner{padding:0 20px 16px;color:var(--muted2);font-size:.86rem;line-height:1.7}
+
+/* Footer */
+footer{border-top:1px solid var(--border);padding:36px 0;text-align:center;color:var(--muted);font-size:.8rem}
+.logo-sm{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px}
+footer a{color:var(--muted2);text-decoration:none}
+footer a:hover{color:var(--text)}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:11px 22px;color:var(--text);font-size:.86rem;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,.4);transition:transform .3s ease;z-index:1000}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* Animations */
+.animate-in{opacity:0;transform:translateY(22px);transition:opacity .6s ease,transform .6s ease}
+.animate-in.visible{opacity:1;transform:translateY(0)}
+
+@media(max-width:600px){
+  .input-row{flex-direction:column}
+  .nav-links{display:none}
+  .stat-bar{flex-direction:column}
+  .stat-item{border-right:none;border-bottom:1px solid var(--border)}
+  .stat-item:last-child{border-bottom:none}
+}
+</style>
+</head>
+<body>
+
+<div class="bg-canvas">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+</div>
+
+<nav>
+  <div class="wrapper">
+    <div class="nav-inner">
+      <div class="logo">Vid<span>Pull</span></div>
+      <div class="nav-links">
+        <a href="#downloader" class="nav-link">Downloader</a>
+        <a href="#how-it-works" class="nav-link">How it works</a>
+        <a href="#faq" class="nav-link">FAQ</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<section class="hero" id="downloader">
+  <div class="wrapper">
+    <div class="hero-badge">✦ Free · No Login · No Limits</div>
+    <h1>Download Videos<br>From <span class="grad">Any Platform</span></h1>
+    <p class="hero-sub">Paste a link from Instagram, YouTube, TikTok, Twitter/X, Facebook, Pinterest, Vimeo and more — get your video instantly.</p>
+
+    <div class="platform-tabs">
+      <div class="ptab all active" onclick="setTab(this,'all')"><span>🌐</span> All Platforms</div>
+      <div class="ptab ig" onclick="setTab(this,'instagram')"><span>📸</span> Instagram</div>
+      <div class="ptab yt" onclick="setTab(this,'youtube')"><span>▶️</span> YouTube</div>
+      <div class="ptab tk" onclick="setTab(this,'tiktok')"><span>🎵</span> TikTok</div>
+      <div class="ptab tw" onclick="setTab(this,'twitter')"><span>🐦</span> Twitter/X</div>
+      <div class="ptab fb" onclick="setTab(this,'facebook')"><span>👍</span> Facebook</div>
+      <div class="ptab pi" onclick="setTab(this,'pinterest')"><span>📌</span> Pinterest</div>
+    </div>
+
+    <div class="input-card">
+      <div class="input-row">
+        <button class="btn-paste" onclick="pasteURL()">📋 Paste</button>
+        <input type="url" id="urlInput" class="url-input" placeholder="Paste any video URL here…"
+               oninput="onInput(this.value)" onkeydown="if(event.key==='Enter')fetchInfo()" autocomplete="off" spellcheck="false">
+        <button class="btn-dl" id="dlBtn" onclick="fetchInfo()">⬇ Get Video</button>
+      </div>
+      <div class="detected-badge" id="detectedBadge">
+        <span id="detectedIcon"></span><span id="detectedText"></span>
+      </div>
+      <div class="error-msg" id="errorMsg"></div>
+
+      <div class="loading-wrap" id="loadingWrap">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loadingText">Fetching video info…</div>
+      </div>
+
+      <div class="result-area" id="resultArea">
+        <div class="result-card">
+          <div class="result-header">
+            <div class="thumb-wrap" id="thumbWrap">
+              <span class="thumb-icon" id="thumbIcon">🎬</span>
+            </div>
+            <div class="result-info">
+              <div class="result-title" id="resultTitle">—</div>
+              <div class="result-meta" id="resultMeta">—</div>
+            </div>
+          </div>
+          <div class="quality-list" id="qualityList"></div>
+        </div>
+      </div>
+    </div><!-- /input-card -->
+
+    <div class="stat-bar" style="margin-top:40px">
+      <div class="stat-item"><div class="stat-num">1000+</div><div class="stat-lbl">Sites Supported</div></div>
+      <div class="stat-item"><div class="stat-num">Free</div><div class="stat-lbl">No Sign-up</div></div>
+      <div class="stat-item"><div class="stat-num">4K</div><div class="stat-lbl">Max Quality</div></div>
+      <div class="stat-item"><div class="stat-num">Fast</div><div class="stat-lbl">Streaming DL</div></div>
+    </div>
+
+    <div style="margin-top:48px">
+      <p class="section-label">✦ Supported Platforms</p>
+      <div class="platforms-grid">
+        <div class="plat-card ig" onclick="fillExample('https://www.instagram.com/reel/')"><span class="picon">📸</span><div class="pname">Instagram</div></div>
+        <div class="plat-card yt" onclick="fillExample('https://www.youtube.com/watch?v=')"><span class="picon">▶️</span><div class="pname">YouTube</div></div>
+        <div class="plat-card tk" onclick="fillExample('https://www.tiktok.com/@user/video/')"><span class="picon">🎵</span><div class="pname">TikTok</div></div>
+        <div class="plat-card tw" onclick="fillExample('https://twitter.com/i/status/')"><span class="picon">🐦</span><div class="pname">Twitter / X</div></div>
+        <div class="plat-card fb" onclick="fillExample('https://www.facebook.com/watch?v=')"><span class="picon">👍</span><div class="pname">Facebook</div></div>
+        <div class="plat-card pi" onclick="fillExample('https://pinterest.com/pin/')"><span class="picon">📌</span><div class="pname">Pinterest</div></div>
+        <div class="plat-card vm" onclick="fillExample('https://vimeo.com/')"><span class="picon">🎬</span><div class="pname">Vimeo</div></div>
+        <div class="plat-card dm" onclick="fillExample('https://www.dailymotion.com/video/')"><span class="picon">▶</span><div class="pname">Dailymotion</div></div>
+        <div class="plat-card rd" onclick="fillExample('https://www.reddit.com/r/')"><span class="picon">🔴</span><div class="pname">Reddit</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="steps-section animate-in" id="how-it-works">
+  <div class="wrapper">
+    <p class="section-label">✦ Simple 3-Step Process</p>
+    <h2 class="section-title">How to <span class="grad2">Download</span></h2>
+    <div class="steps-grid">
+      <div class="step-card animate-in"><div class="step-num">01</div><h3>Copy the Link</h3><p>Open any supported platform, find the video you want, and copy its URL from the browser or app share button.</p></div>
+      <div class="step-card animate-in"><div class="step-num">02</div><h3>Paste & Fetch</h3><p>Paste the link into VidPull. We'll automatically detect the platform and retrieve all available quality options.</p></div>
+      <div class="step-card animate-in"><div class="step-num">03</div><h3>Pick Quality & Save</h3><p>Choose your preferred resolution — up to 4K — or extract as MP3 audio. The file downloads directly to your device.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="features-section animate-in">
+  <div class="wrapper">
+    <p class="section-label">✦ Why VidPull</p>
+    <h2 class="section-title">Built For <span class="grad2">Speed & Quality</span></h2>
+    <div class="features-grid">
+      <div class="feat-card animate-in"><div class="feat-icon">⚡</div><h4>Blazing Fast</h4><p>Powered by yt-dlp. Downloads start immediately after fetching info.</p></div>
+      <div class="feat-card animate-in"><div class="feat-icon">🔒</div><h4>Private & Safe</h4><p>No URLs stored. No tracking. Temp files deleted after download.</p></div>
+      <div class="feat-card animate-in"><div class="feat-icon">🎯</div><h4>No Watermarks</h4><p>Original video quality exactly as uploaded. Clean output every time.</p></div>
+      <div class="feat-card animate-in"><div class="feat-icon">📱</div><h4>Works on Mobile</h4><p>Fully responsive. Works on any browser, phone, tablet or desktop.</p></div>
+      <div class="feat-card animate-in"><div class="feat-icon">🎚️</div><h4>Multiple Qualities</h4><p>360p up to 4K where available. Audio-only MP3 extraction included.</p></div>
+      <div class="feat-card animate-in"><div class="feat-icon">∞</div><h4>1000+ Sites</h4><p>Supports Instagram, YouTube, TikTok, Twitter, Facebook and hundreds more.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="faq-section animate-in" id="faq">
+  <div class="wrapper">
+    <p class="section-label">✦ Common Questions</p>
+    <h2 class="section-title">FAQ</h2>
+    <div class="faq-list">
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Is VidPull completely free? <span class="faq-arrow">⌄</span></div>
+        <div class="faq-a"><div class="faq-a-inner">Yes — 100% free with no accounts, no limits, and no subscriptions required.</div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Which platforms are supported? <span class="faq-arrow">⌄</span></div>
+        <div class="faq-a"><div class="faq-a-inner">VidPull is powered by yt-dlp which supports 1000+ websites including Instagram, YouTube, TikTok, Twitter/X, Facebook, Pinterest, Vimeo, Reddit, Dailymotion and many more.</div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Do I need to install anything? <span class="faq-arrow">⌄</span></div>
+        <div class="faq-a"><div class="faq-a-inner">No installation required for the web interface. The backend server runs locally on your machine. Just run the start script and open the page in any browser.</div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Can I download private videos? <span class="faq-arrow">⌄</span></div>
+        <div class="faq-a"><div class="faq-a-inner">VidPull can only download publicly accessible videos. Private or protected content is not supported.</div></div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">What video quality can I download? <span class="faq-arrow">⌄</span></div>
+        <div class="faq-a"><div class="faq-a-inner">We offer all available qualities from the source — up to 4K where the original supports it. You can also download audio-only as MP3.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrapper">
+    <div class="logo-sm">VidPull</div>
+    <p>The fastest multi-platform video downloader. Powered by yt-dlp.</p>
+    <p style="margin-top:14px;color:#2a3352">© 2025 VidPull · For personal use only</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://localhost:5000';
+let currentInfo = null;
+
+// ── Platform detection ──
+const platforms = [
+  {name:'Instagram', domains:['instagram.com','instagr.am'], icon:'📸', cls:'ig'},
+  {name:'YouTube',   domains:['youtube.com','youtu.be'],     icon:'▶️', cls:'yt'},
+  {name:'TikTok',    domains:['tiktok.com','vm.tiktok.com'], icon:'🎵', cls:'tk'},
+  {name:'Twitter/X', domains:['twitter.com','x.com'],        icon:'🐦', cls:'tw'},
+  {name:'Facebook',  domains:['facebook.com','fb.watch'],    icon:'👍', cls:'fb'},
+  {name:'Pinterest', domains:['pinterest.com','pin.it'],     icon:'📌', cls:'pi'},
+  {name:'Vimeo',     domains:['vimeo.com'],                  icon:'🎬', cls:'vm'},
+  {name:'Dailymotion',domains:['dailymotion.com','dai.ly'],  icon:'▶',  cls:'dm'},
+  {name:'Reddit',    domains:['reddit.com','redd.it'],       icon:'🔴', cls:'rd'},
+];
+
+function detectPlatform(url) {
+  try {
+    const u = new URL(url.trim().startsWith('http') ? url.trim() : 'https://'+url.trim());
+    return platforms.find(p => p.domains.some(d => u.hostname === d || u.hostname.endsWith('.'+d))) || null;
+  } catch { return null; }
+}
+
+function onInput(val) {
+  hideError(); hideResult();
+  const badge = document.getElementById('detectedBadge');
+  const input = document.getElementById('urlInput');
+  if (!val.trim()) { badge.classList.remove('show'); input.classList.remove('detected'); return; }
+  const plat = detectPlatform(val);
+  if (plat) {
+    document.getElementById('detectedIcon').textContent = plat.icon + ' ';
+    document.getElementById('detectedText').textContent = plat.name + ' video detected — ready to download';
+    badge.classList.add('show');
+    input.classList.add('detected');
+  } else {
+    badge.classList.remove('show');
+    input.classList.remove('detected');
+  }
+}
+
+function setTab(el, plat) {
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const placeholders = {instagram:'Paste Instagram URL…',youtube:'Paste YouTube URL…',tiktok:'Paste TikTok URL…',twitter:'Paste Twitter/X URL…',facebook:'Paste Facebook URL…',pinterest:'Paste Pinterest URL…'};
+  document.getElementById('urlInput').placeholder = placeholders[plat] || 'Paste any video URL here…';
+}
+
+function fillExample(url) {
+  document.getElementById('urlInput').value = url;
+  document.getElementById('urlInput').focus();
+  showToast('Paste the full video URL here!');
+}
+
+async function pasteURL() {
+  try {
+    const text = await navigator.clipboard.readText();
+    document.getElementById('urlInput').value = text;
+    onInput(text);
+    showToast('📋 Pasted!');
+  } catch { showToast('⚠️ Allow clipboard access to paste'); }
+}
+
+// ── Main: fetch video info from backend ──
+async function fetchInfo() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) { showError('Please paste a video URL first.'); return; }
+
+  hideError(); hideResult();
+  setLoading(true, 'Fetching video info…');
+  document.getElementById('dlBtn').disabled = true;
+
+  const msgs = ['Fetching video info…','Detecting available qualities…','Preparing download options…'];
+  let mi = 0;
+  const interval = setInterval(() => { if (++mi < msgs.length) document.getElementById('loadingText').textContent = msgs[mi]; }, 800);
+
+  try {
+    const res = await fetch(`${API}/api/info`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({url})
+    });
+    clearInterval(interval);
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      setLoading(false);
+      showError(data.error || 'Failed to fetch video info.');
+      document.getElementById('dlBtn').disabled = false;
+      return;
+    }
+
+    currentInfo = data;
+    setLoading(false);
+    renderResult(data);
+  } catch(e) {
+    clearInterval(interval);
+    setLoading(false);
+    showError('⚠️ Cannot connect to backend. Make sure server.py is running on port 5000.');
+    document.getElementById('dlBtn').disabled = false;
+  }
+
+  document.getElementById('dlBtn').disabled = false;
+}
+
+function renderResult(info) {
+  // Thumbnail
+  const tw = document.getElementById('thumbWrap');
+  if (info.thumbnail) {
+    tw.innerHTML = `<img src="${info.thumbnail}" alt="thumb" onerror="this.parentNode.innerHTML='<span class=thumb-icon>🎬</span>'">`;
+  } else {
+    document.getElementById('thumbIcon').textContent = '🎬';
+  }
+  document.getElementById('resultTitle').textContent = info.title || 'Video';
+  document.getElementById('resultMeta').textContent = [info.platform, info.uploader, info.duration].filter(Boolean).join(' · ');
+
+  const list = document.getElementById('qualityList');
+  list.innerHTML = info.qualities.map(q => {
+    const badge = getBadgeClass(q);
+    const icon  = q.type === 'audio' ? '🎵' : '🎬';
+    return `
+    <div class="q-item">
+      <div class="q-left">
+        <span class="q-badge ${badge}">${q.label.split(' ')[0]}</span>
+        <span class="q-label">${icon} ${q.label}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="q-size">${q.size}</span>
+        <button class="btn-dl-item" onclick="downloadFile(this, '${q.format_id}', '${q.type}', '${q.ext}')">
+          ⬇ Download
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('resultArea').classList.add('show');
+}
+
+function getBadgeClass(q) {
+  if (q.type === 'audio') return 'q-mp3';
+  const h = q.height || 0;
+  if (h >= 2160) return 'q-4k';
+  if (h >= 1080) return 'q-1080';
+  if (h >= 720)  return 'q-720';
+  return 'q-std';
+}
+
+// ── Real download from backend ──
+async function downloadFile(btn, formatId, type, ext) {
+  if (!currentInfo) return;
+  const orig = btn.innerHTML;
+  btn.innerHTML = '⏳ Preparing…';
+  btn.classList.add('loading-btn');
+  showToast('⬇ Starting download…');
+
+  try {
+    const res = await fetch(`${API}/api/download`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        url: currentInfo.url,
+        format_id: formatId,
+        type: type,
+        ext: ext,
+        title: currentInfo.title || 'video'
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      showToast('❌ ' + (err.error || 'Download failed'), true);
+      btn.innerHTML = orig;
+      btn.classList.remove('loading-btn');
+      return;
+    }
+
+    // Get filename from header
+    const cd = res.headers.get('Content-Disposition') || '';
+    const match = cd.match(/filename="?([^"]+)"?/);
+    const filename = match ? match[1] : `video.${ext}`;
+
+    // Stream to blob → anchor download
+    btn.innerHTML = '⏳ Downloading…';
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+
+    showToast('✅ Download complete!');
+  } catch(e) {
+    showToast('❌ Download error: ' + e.message, true);
+  }
+
+  btn.innerHTML = orig;
+  btn.classList.remove('loading-btn');
+}
+
+function setLoading(show, msg) {
+  const lw = document.getElementById('loadingWrap');
+  lw.classList.toggle('show', show);
+  if (msg) document.getElementById('loadingText').textContent = msg;
+}
+function hideResult() { document.getElementById('resultArea').classList.remove('show'); currentInfo = null; }
+function showError(msg) { const e = document.getElementById('errorMsg'); e.textContent = '⚠️ ' + msg; e.classList.add('show'); }
+function hideError() { document.getElementById('errorMsg').classList.remove('show'); }
+
+function toggleFaq(el) {
+  const item = el.closest('.faq-item');
+  const open = item.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+  if (!open) item.classList.add('open');
+}
+
+let toastTimer;
+function showToast(msg, err=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = err ? 'rgba(244,63,94,.35)' : 'rgba(79,139,255,.35)';
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// Scroll animations
+const obs = new IntersectionObserver(entries => entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); }), {threshold:.1});
+document.querySelectorAll('.animate-in').forEach(el => obs.observe(el));
+</script>
+</body>
+</html>
